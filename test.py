@@ -69,12 +69,12 @@ def build_inference_net(model, args):
         large_img = resize(raw_img, to_shape=[args.times * args.input_size, args.times * args.input_size], func=tf.image.resize_nearest_neighbor)
         large_img.set_shape([1, args.times * args.input_size, args.times * args.input_size, 3])
         large_img = large_img/127.5 - 1
-        small_img =  tf.extract_image_patches(
-                         large_img, 
-                         [1,args.times , args.times ,1], 
-                         [1, args.times,args.times,1], 
-                         [1,1,1,1], 
-                         padding='SAME')
+        small_img = tf.image.extract_patches(
+                            images=large_img,
+                            sizes=[1, args.times, args.times, 1],
+                            strides=[1, args.times, args.times, 1],
+                            rates=[1, 1, 1, 1],
+                            padding='SAME')
         small_img = tf.reshape(small_img, [1, args.input_size, args.input_size, args.times, args.times, 3])
         small_img = tf.reduce_mean(small_img, axis=[3,4])
 
@@ -154,8 +154,9 @@ if __name__ == "__main__":
         for var in vars_list:
             vname = var.name
             from_name = vname
-            var_value = tf.contrib.framework.load_variable(args.checkpoint_dir, from_name)
-            assign_ops.append(tf.assign(var, var_value))
+            #var_value = tf.contrib.framework.load_variable(args.checkpoint_dir, from_name)
+            var_value = tf.train.load_checkpoint(args.checkpoint_dir).get_tensor(vname)
+            assign_ops.append(tf.compat.v1.disable_eager_execution())
 
         sess.run(assign_ops)
         print('Model loaded.')
